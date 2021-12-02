@@ -1,7 +1,6 @@
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
-const bcrypt = require('bcrypt');
 const cookieParser = require("cookie-parser");
 const PORT = 8080; // default port 8080
 
@@ -26,6 +25,14 @@ function checkByEmail(email, users) {
     }
   }
   return null;
+}
+
+function checkPassword(password, user) {
+  if (user && user.password === password) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 const urlDatabase = {
@@ -82,7 +89,6 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
-
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
   const shortURL = generateRandomString();
@@ -113,10 +119,25 @@ app.post("/urls/:id", (req, res) => {
   res.redirect("/urls");
 });
 
+app.get("/login", (req, res) => {
+  const templateVars = {
+    user: users[req.cookies.user_id],
+  };
+  res.render("login", templateVars);
+});
 
 app.post("/login", (req, res) => {
-  res.cookie("user_id", req.cookies.user_id);
-  res.redirect("/urls");
+  const email = req.body.email;
+  let password = req.body.password;
+  const user = checkByEmail(email, users);
+  const isValidPassword = checkPassword(password, users[user]);
+  console.log({user, password, isValidPassword});
+  if (isValidPassword) {
+    res.cookie("user_id", user);
+    res.redirect("/urls");
+  } else {
+    return res.status(403).send("Incorrect credentials!");
+  }
 });
 
 app.post("/logout", (req, res) => {
@@ -125,33 +146,30 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  /* const templateVars = {
-    email: req.cookies.email,
-    password: req.cookies.password
-  }; */
-  res.render("register");
+  const templateVars = {
+    user: users[req.cookies.user_id],
+  };
+  res.render("register", templateVars);
 });
 
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
+  //check if user left email or password blank
   if (!email || !password) {
-    return res.status(400).send("Sorry can not leave it blank!");
+    return res.status(403).send("Sorry can not leave it blank!");
   }
   const user = checkByEmail(email, users);
   if (user) {
-    return res.status(400).send("This user already exists!");
+    return res.status(403).send("This user already exists!");
   }
-
   const newUser = generateRandomString(3);
-
   users[newUser] = {
     id: newUser,
     email: email,
-    password: bcrypt.hashSync(password, 10)
+    password:password
   };
-
   console.log(users);
   res.cookie("user_id", newUser);
   res.redirect("/urls");
