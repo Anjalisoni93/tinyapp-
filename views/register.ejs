@@ -7,21 +7,21 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
 
-    <title>New URL - TinyApp Example</title>
+    <title>Register - TinyApp Example</title>
   </head>
   <body>
-
-    <h1>Register</h1>
+    <%- include('partials/_header') %>
+    <h3>Create Account</h3>
     <form action="/register" method="POST">
-      <label>Email Address</label>
-      <input name="email" type="email">
+      <label for="email">Email Address</label>
+      <input class="form-control" name="email" type="email" placeholder="Enter Email" style="width: 300px;">
       <br/>
 
-      <label>Password</label>
-      <input name="password" type="password">
+      <label for="password">Password</label>
+      <input class="form-control" name="password" type="password" placeholder="Enter Password" style="width: 300px;">
       <br/>
 
-      <button type="submit">Register</button>
+      <button class="btn btn-primary" type="submit">Register</button>
     </form>
       <!-- Bootstrap JS -->
       <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
