@@ -12,16 +12,19 @@
     </div>
     <div>
       <% if(user){ %>
-        <div>
+        <div class="navbar-nav">
           <form method="POST" action="/logout">
             Logged in as: <%= user.email %> &nbsp; &nbsp;
             <button type="submit" class="btn btn-outline-secondary">Logout</button>
           </form>
         </div>
       <% } else { %>  
+        <div class="navbar-nav">
           <a class="nav-item nav-link" href="/login">Login</a>
           <a class="nav-item nav-link" href="/register">Register</a>
+        </div>
      <% } %>
+     </div>
     </div>
   </nav>
-</header>
+</header> 
