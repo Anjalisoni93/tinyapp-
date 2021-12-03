@@ -26,7 +26,8 @@ function checkPassword(password) {
 
 const urlDatabase = {
   b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
-  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" }
+  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" },
+  m12345: { longURL: "https://www.telus.com", userID: "m123"}
 };
 
 const users = {
