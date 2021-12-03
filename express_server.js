@@ -35,9 +35,19 @@ function checkPassword(password, user) {
   }
 }
 
+const urlsForUser = function(id) {
+  let newData = {};
+  for (let data in urlDatabase) {
+    if (id === urlDatabase[data].userID) {
+      newData[data] = urlDatabase[data];
+    }
+  }
+  return newData;
+};
+
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
+  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" }
 };
 
 const users = {
@@ -65,58 +75,110 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
-// Route to the main page where it checks which user is currently logged in
+// Route to the main page where it gets page for URL index
 app.get("/urls", (req, res) => {
+  const user = req.cookies.user_id;
+  const userUrls = urlsForUser(user, urlDatabase);
   const templateVars = {
     user: users[req.cookies.user_id],
-    urls: urlDatabase
+    urls: userUrls
   };
-  console.log('checking for users', users[req.cookies.user_id]);
+  if (!user) {
+    return res.redirect("/login");
+  }
   res.render("urls_index", templateVars);
+});
+
+app.post("/urls", (req, res) => {
+  if (req.cookies.user_id) {
+    const shortURL = generateRandomString();
+    urlDatabase[shortURL] = {
+      longURL: req.body.longURL,
+      user:req.cookies.user_id
+    };
+    res.redirect(`/urls/${shortURL}`);
+  } else {
+    res.redirect("/login");
+  }
 });
 
 // route that creates a new shorturl
 app.get("/urls/new", (req, res) => {
+  // if user is not logged in it redirects to login
   const templateVars = {
     user: users[req.cookies.user_id],
   };
-  res.render("urls_new", templateVars);
+  if (users[req.cookies.user_id]) {
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect("/login");
+  }
 });
 
 // this path handles the shortURL requests
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);
-});
-
-app.post("/urls", (req, res) => {
-  const longURL = req.body.longURL;
-  const shortURL = generateRandomString();
-  urlDatabase[shortURL] = longURL;
-  console.log('Something happened!', urlDatabase);
-  res.redirect(`/urls/${shortURL}`);
+  console.log(req.params);
+  console.log(urlDatabase);
+  console.log(urlDatabase[req.params.shortURL]);
+  if (urlDatabase[req.params.shortURL]) {
+    let longURL = urlDatabase[req.params.shortURL].longURL;
+    return res.redirect(longURL);
+  } else {
+    return res.redirect("/urls");
+  }
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  // user has to login first to be able to create a newURL
+  if (!users[req.cookies.user_id]) {
+    return res.redirect("/login");
+  }
+  if (!urlDatabase[req.params.shortURL]) {
+    return res.redirect("/urls");
+  }
   const templateVars = {
     user: users[req.cookies.user_id],
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL]
+    longURL: urlDatabase[req.params.shortURL].longURL
   }; // Use [] to add a value/property of shortURL
   res.render("urls_show", templateVars);
 });
 
+app.post("/urls/:shortURL", (req, res) => {
+  const shortURL = req.params.shortURL;
+  const longURL = req.body.longURL;
+  urlDatabase[shortURL] = {
+    longURL: longURL,
+    userID: req.cookies.user_id
+  };
+  res.redirect("/urls");
+});
+
 app.post("/urls/:shortURL/delete", (req, res) => {
+  if (!users[req.cookies.user_id]) {
+    return res.redirect("/login");
+  }
+  if (!urlDatabase[req.params.shortURL]) {
+    return res.redirect("/urls");
+  }
   const shortURL = req.params.shortURL;
   delete urlDatabase[shortURL];
   res.redirect("/urls");
 });
 
 app.post("/urls/:id", (req, res) => {
-  const shortURL = req.params.id;
-  const newURL = req.body.newURL;
-  urlDatabase[shortURL] = newURL;
-  res.redirect("/urls");
+  if (users[req.cookies.user_id]) {
+    let userUrl = urlsForUser(req.cookies.user_id);
+    for (let key in userUrl) {
+      if (!req.params.id === key) {
+        return res.status(401).send("This URL can not be updated.");
+      }
+    }
+    urlDatabase[req.params.id].longURL = req.body.updatedURL;
+    res.redirect("/urls");
+  } else {
+    return res.status(401).send("You need to login first!");
+  }
 });
 
 app.get("/login", (req, res) => {
@@ -131,7 +193,7 @@ app.post("/login", (req, res) => {
   let password = req.body.password;
   const user = checkByEmail(email, users);
   const isValidPassword = checkPassword(password, users[user]);
-  console.log({user, password, isValidPassword});
+  // console.log({user, password, isValidPassword});
   if (isValidPassword) {
     res.cookie("user_id", user);
     res.redirect("/urls");
@@ -170,7 +232,7 @@ app.post("/register", (req, res) => {
     email: email,
     password:password
   };
-  console.log(users);
+  // console.log(users);
   res.cookie("user_id", newUser);
   res.redirect("/urls");
 });
