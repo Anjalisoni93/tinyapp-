@@ -3,6 +3,7 @@ const app = express();
 const bcrypt = require("bcrypt");
 const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
+const { generateRandomString, checkByEmail, urlsForUser } = require("./helper");
 const PORT = 8080; // default port 8080
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -14,24 +15,6 @@ app.use(cookieSession({
 
 app.set("view engine", "ejs");
 
-function generateRandomString() {
-  let result = '';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-function checkByEmail(email, users) {
-  for (let user in users) {
-    if (email === users[user].email) {
-      return user;
-    }
-  }
-  return null;
-}
-
 function checkPassword(password) {
   for (const key in users) {
     if (bcrypt.compareSync(password, users[key].password)) {
@@ -40,16 +23,6 @@ function checkPassword(password) {
   }
   return false;
 }
-
-const urlsForUser = function(id) {
-  let newData = {};
-  for (let data in urlDatabase) {
-    if (id === urlDatabase[data].userID) {
-      newData[data] = urlDatabase[data];
-    }
-  }
-  return newData;
-};
 
 const urlDatabase = {
   b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
@@ -174,7 +147,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 app.post("/urls/:id", (req, res) => {
   if (users[req.session.user_id]) {
-    let userUrl = urlsForUser(req.session.user_id);
+    let userUrl = urlsForUser(req.session.user_id, urlDatabase);
     for (let key in userUrl) {
       if (!req.params.id === key) {
         return res.status(401).send("This URL can not be updated.");
