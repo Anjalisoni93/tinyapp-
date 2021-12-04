@@ -1,19 +1,17 @@
 const express = require("express");
-const app = express();
+const cookieSession = require('cookie-session');
 const bcrypt = require("bcrypt");
 const bodyParser = require("body-parser");
-const cookieSession = require('cookie-session');
 const { generateRandomString, checkByEmail, urlsForUser } = require("./helper");
 const PORT = 8080; // default port 8080
+const app = express();
 
+app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({extended: true}));
-
 app.use(cookieSession({
   name: 'session',
   keys: ['minion']
 }));
-
-app.set("view engine", "ejs");
 
 function checkPassword(password) {
   for (const key in users) {
@@ -24,12 +22,14 @@ function checkPassword(password) {
   return false;
 }
 
+//Databse
 const urlDatabase = {
   b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
   i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" },
   m12345: { longURL: "https://www.telus.com", userID: "m123"}
 };
 
+//Users
 const users = {
   "userRandomID": {
     id: "userRandomID",
@@ -43,19 +43,22 @@ const users = {
   }
 };
 
+// Route to homepage
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
 
+// It returns database information in a JSON format
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+// Greets peopele with Hello
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
-// Route to the main page where it gets page for URL index
+// returns the page for urls_index
 app.get("/urls", (req, res) => {
   const user = req.session.user_id;
   const userUrls = urlsForUser(user, urlDatabase);
@@ -69,6 +72,7 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
+// This is where new URL is being created
 app.post("/urls", (req, res) => {
   if (req.session.user_id) {
     const shortURL = generateRandomString();
@@ -97,9 +101,6 @@ app.get("/urls/new", (req, res) => {
 
 // this path handles the shortURL requests
 app.get("/u/:shortURL", (req, res) => {
-  console.log(req.params);
-  console.log(urlDatabase);
-  console.log(urlDatabase[req.params.shortURL]);
   if (urlDatabase[req.params.shortURL]) {
     let longURL = urlDatabase[req.params.shortURL].longURL;
     return res.redirect(longURL);
@@ -108,6 +109,7 @@ app.get("/u/:shortURL", (req, res) => {
   }
 });
 
+// returns the page where user can Edit and Delete a URL
 app.get("/urls/:shortURL", (req, res) => {
   // user has to login first to be able to create a newURL
   if (!users[req.session.user_id]) {
@@ -120,10 +122,11 @@ app.get("/urls/:shortURL", (req, res) => {
     user: users[req.session.user_id],
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL].longURL
-  }; // Use [] to add a value/property of shortURL
+  };
   res.render("urls_show", templateVars);
 });
 
+// after creating a new url when user submit the request it gets to this page
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const longURL = req.body.longURL;
@@ -134,6 +137,8 @@ app.post("/urls/:shortURL", (req, res) => {
   res.redirect("/urls");
 });
 
+// only a user who has logged in and created a url can delete that url
+// Deletes the URL
 app.post("/urls/:shortURL/delete", (req, res) => {
   if (!users[req.session.user_id]) {
     return res.redirect("/login");
@@ -146,6 +151,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
+// checks to see if a user has logged in first and if that shortURL exist only then a user can update the URL
 app.post("/urls/:id", (req, res) => {
   if (users[req.session.user_id]) {
     let userUrl = urlsForUser(req.session.user_id, urlDatabase);
@@ -161,6 +167,7 @@ app.post("/urls/:id", (req, res) => {
   }
 });
 
+// Login page rendering
 app.get("/login", (req, res) => {
   const templateVars = {
     user: users[req.session.user_id],
@@ -168,12 +175,12 @@ app.get("/login", (req, res) => {
   res.render("login", templateVars);
 });
 
+//returns login page where it checks for valid email and password using a function
 app.post("/login", (req, res) => {
   const email = req.body.email;
   let password = req.body.password;
   const user = checkByEmail(email, users);
   const isValidPassword = checkPassword(password, users[user]);
-  // console.log({user, password, isValidPassword});
   if (isValidPassword) {
     req.session.user_id = user;
     res.redirect("/urls");
@@ -182,11 +189,13 @@ app.post("/login", (req, res) => {
   }
 });
 
+//user can logout and redirect them to /urls
 app.post("/logout", (req, res) => {
   req.session.user_id = null;
   res.redirect("/urls");
 });
 
+// register rendering
 app.get("/register", (req, res) => {
   const templateVars = {
     user: users[req.session.user_id],
@@ -194,6 +203,7 @@ app.get("/register", (req, res) => {
   res.render("register", templateVars);
 });
 
+// checks for valid email and password and also to make sure they leave the fields blank
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -206,7 +216,6 @@ app.post("/register", (req, res) => {
   if (user) {
     return res.status(403).send("This user already exists!");
   }
-
   // hash the password before storing to database
   const hashPassword = bcrypt.hashSync(password, 10);
   const newUser = generateRandomString(3);
@@ -215,12 +224,11 @@ app.post("/register", (req, res) => {
     email: email,
     password: hashPassword
   };
-  
+  // returns encrypted password when you check in commandline
   req.session.user_id = newUser;
-  // checking if password is encrypted
-  console.log(users);
   res.redirect("/urls");
 });
+
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
