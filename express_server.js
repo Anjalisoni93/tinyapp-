@@ -45,7 +45,7 @@ const users = {
 
 // Route to homepage
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.redirect("/urls");
 });
 
 // It returns database information in a JSON format
@@ -74,16 +74,18 @@ app.get("/urls", (req, res) => {
 
 // This is where new URL is being created
 app.post("/urls", (req, res) => {
-  if (req.session.user_id) {
-    const shortURL = generateRandomString();
-    urlDatabase[shortURL] = {
-      longURL: req.body.longURL,
-      user:req.session.user_id
-    };
-    res.redirect(`/urls/${shortURL}`);
-  } else {
-    res.redirect("/login");
+  const userID = req.session.user_id;
+  if (!userID) {
+    return res.redirect("/login");
   }
+
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = {
+    longURL: req.body.longURL,
+    userID
+  };
+
+  res.redirect(`/urls/${shortURL}`);
 });
 
 // route that creates a new shorturl
@@ -112,41 +114,57 @@ app.get("/u/:shortURL", (req, res) => {
 // returns the page where user can Edit and Delete a URL
 app.get("/urls/:shortURL", (req, res) => {
   // user has to login first to be able to create a newURL
-  if (!users[req.session.user_id]) {
+  const userID = req.session.user_id;
+  if (!userID) {
     return res.redirect("/login");
   }
-  if (!urlDatabase[req.params.shortURL]) {
+  const user = users[userID];
+  const shortURL = req.params.shortURL;
+  const urlObject = urlDatabase[shortURL];
+  if (userID !== urlObject.userID) {
     return res.redirect("/urls");
   }
   const templateVars = {
-    user: users[req.session.user_id],
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL].longURL
+    user,
+    shortURL,
+    longURL: urlObject.longURL
   };
   res.render("urls_show", templateVars);
 });
 
 // after creating a new url when user submit the request it gets to this page
 app.post("/urls/:shortURL", (req, res) => {
+  const userID = req.session.user_id;
+  if (!userID) {
+    return res.redirect("/login");
+  }
+  const user = users[userID];
   const shortURL = req.params.shortURL;
+  const urlObject = urlDatabase[shortURL];
+  if (userID !== urlObject.userID) {
+    return res.redirect("/urls");
+  }
   const longURL = req.body.longURL;
-  urlDatabase[shortURL] = {
-    longURL: longURL,
-    userID: req.session.user_id
-  };
+  urlDatabase[shortURL].longURL = longURL;
   res.redirect("/urls");
 });
 
 // only a user who has logged in and created a url can delete that url
 // Deletes the URL
 app.post("/urls/:shortURL/delete", (req, res) => {
-  if (!users[req.session.user_id]) {
+  const userID = req.session.user_id;
+  if (!userID) {
     return res.redirect("/login");
   }
-  if (!urlDatabase[req.params.shortURL]) {
+  const user = users[userID];
+  const shortURL = req.params.shortURL;
+  const urlObject = urlDatabase[shortURL];
+  if (!urlObject) {
     return res.redirect("/urls");
   }
-  const shortURL = req.params.shortURL;
+  if (userID !== urlObject.userID) {
+    return res.redirect("/urls");
+  }
   delete urlDatabase[shortURL];
   res.redirect("/urls");
 });
