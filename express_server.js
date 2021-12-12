@@ -53,11 +53,6 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-// Greets peopele with Hello
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
-
 // returns the page for urls_index
 app.get("/urls", (req, res) => {
   const user = req.session.user_id;
@@ -116,13 +111,13 @@ app.get("/urls/:shortURL", (req, res) => {
   // user has to login first to be able to create a newURL
   const userID = req.session.user_id;
   if (!userID) {
-    return res.redirect("/login");
+    return res.status(401).send("<h1> Please login first! </h1>");
   }
   const user = users[userID];
   const shortURL = req.params.shortURL;
   const urlObject = urlDatabase[shortURL];
   if (userID !== urlObject.userID) {
-    return res.redirect("/urls");
+    return res.status(401).send("<h1> This URL does not belong to you. </h1>");
   }
   const templateVars = {
     user,
@@ -130,23 +125,6 @@ app.get("/urls/:shortURL", (req, res) => {
     longURL: urlObject.longURL
   };
   res.render("urls_show", templateVars);
-});
-
-// after creating a new url when user submit the request it gets to this page
-app.post("/urls/:shortURL", (req, res) => {
-  const userID = req.session.user_id;
-  if (!userID) {
-    return res.redirect("/login");
-  }
-  const user = users[userID];
-  const shortURL = req.params.shortURL;
-  const urlObject = urlDatabase[shortURL];
-  if (userID !== urlObject.userID) {
-    return res.redirect("/urls");
-  }
-  const longURL = req.body.longURL;
-  urlDatabase[shortURL].longURL = longURL;
-  res.redirect("/urls");
 });
 
 // only a user who has logged in and created a url can delete that url
@@ -171,18 +149,20 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 // checks to see if a user has logged in first and if that shortURL exist only then a user can update the URL
 app.post("/urls/:id", (req, res) => {
-  if (users[req.session.user_id]) {
-    let userUrl = urlsForUser(req.session.user_id, urlDatabase);
-    for (let key in userUrl) {
-      if (!req.params.id === key) {
-        return res.status(401).send("This URL can not be updated.");
-      }
-    }
-    urlDatabase[req.params.id].longURL = req.body.updatedURL;
-    res.redirect("/urls");
-  } else {
-    return res.status(401).send("You need to login first!");
+  const userid = req.session.user_id;
+  const currentUser = users[userid];
+  const urlid = req.params.id;
+  const currentUrlObj = urlDatabase[urlid];
+
+  if (!currentUser) {
+    return res.status(401).send("<h1> Please login first! </h1>");
   }
+
+  if (userid !== currentUrlObj.userID) {
+    return res.status(401).send("<h1> This URL does not belong to you. </h1>");
+  }
+
+  urlDatabase[urlid].longURL = req.body.updatedURL;
 });
 
 // Login page rendering
